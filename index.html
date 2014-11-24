@@ -2,19 +2,17 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>gaia-value-selector</title>
+  <title>gaia-pages</title>
   <link rel="stylesheet" type="text/css" href="bower_components/base/base.css">
   <link rel="stylesheet" type="text/css" href="bower_components/gaia-theme/gaia-theme.css">
   <link rel="stylesheet" type="text/css" href="bower_components/gaia-fonts/style.css">
   <script src="bower_components/gaia-theme/lib/gaia-theme-selector.js"></script>
   <script src="bower_components/gaia-component/gaia-component.js"></script>
   <script src="gaia-pages.js"></script>
-  <script src="gaia-page.js"></script>
   <style>
 
     body {
-      font: 18px sans-serif;
-      color: #666;
+      color: #fff;
     }
 
     nav {
@@ -23,18 +21,172 @@
       top: 0;
       z-index: 2;
 
+      display: flex;
       width: 100%;
       padding: 0.5rem;
-
-
     }
+
+    nav > * {
+      flex: 1;
+      text-decoration: underline;
+    }
+
+    gaia-pages > * {
+      padding: 100px;
+
+      animation-duration: 400ms;
+      animation-fill-mode: forwards;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    gaia-pages > [matched] {
+      pointer-events: auto;
+      opacity: 1;
+    }
+
+    gaia-pages > .enter-forward {
+      animation-name: page-enter-right;
+      opacity: 1;
+    }
+
+    [dir=rtl] gaia-pages > .enter-forward {
+       animation-name: page-enter-left;
+    }
+
+    gaia-pages > .enter-back {
+      animation-name: page-enter-left;
+      opacity: 1;
+    }
+
+    [dir=rtl] gaia-pages > .enter-back {
+       animation-name: page-enter-right;
+    }
+
+    gaia-pages > .leave-forward {
+      animation-name: page-leave-right;
+      opacity: 1;
+    }
+
+    [dir=rtl] gaia-pages > .leave-forward {
+      animation-name: page-leave-left;
+      opacity: 1;
+    }
+
+    gaia-pages > .leave-back {
+      animation-name: page-leave-left;
+      opacity: 1;
+    }
+
+    [dir=rtl] gaia-pages > .leave-back {
+      animation-name: page-leave-right;
+      opacity: 1;
+    }
+
+    @keyframes page-enter-right {
+      0% { transform: translateX(100%); }
+      100% { transform: translateX(0%); }
+    }
+
+    @keyframes page-enter-left {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(0%); }
+    }
+
+    @keyframes page-leave-right {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(100%); }
+    }
+
+    @keyframes page-leave-left {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-100%); }
+    }
+
+    gallery-page-home {
+      background: blue;
+    }
+
+    gallery-page-list {
+      background: red;
+    }
+
+    gallery-page-item {
+      background: green;
+    }
+
   </style>
+
+  <script>
+    var component = window['gaia-component'];
+
+    component.register('gallery-page-home', {
+      created: function() {
+        this.createShadowRoot();
+      },
+
+      attrs: {
+        matched: {
+          set: function(value) {
+            var matched = value || value === '';
+            console.log('home matched: %s', matched);
+          }
+        }
+      }
+    });
+
+    component.register('gallery-page-list', {
+      created: function() {
+        this.createShadowRoot();
+      },
+
+      attrs: {
+        params: {
+          get: function() { return this._params; },
+          set: function(params) {
+            this.shadowRoot.textContent = JSON.stringify(params);
+            this._params = params;
+          }
+        },
+
+        matched: {
+          set: function(value) {
+            var matched = value || value === '';
+            console.log('list matched: %s', matched);
+          }
+        }
+      }
+    });
+
+    component.register('gallery-page-item', {
+      created: function() {
+        this.createShadowRoot();
+      },
+
+      attrs: {
+        params: {
+          get: function() { return this._params; },
+          set: function(params) {
+            this.shadowRoot.textContent = JSON.stringify(params);
+            this._params = params;
+          }
+        },
+
+        matched: {
+          set: function(value) {
+            var matched = value || value === '';
+            console.log('item matched: %s', matched);
+          }
+        }
+      }
+    });
+
+  </script>
 </head>
 
 <body>
-  <!-- <gaia-theme-selector></gaia-theme-selector> -->
-
   <nav>
+    <label><input type=checkbox id="rtl"/>RTL</label>
     <a href='#/'>Home</a>
     <a href='#/album1'>Album 1</a>
     <a href='#/album2'>Album 2</a>
@@ -44,15 +196,19 @@
   </nav>
 
   <gaia-pages>
-    <gaia-page name="item" route="/:album/:index">
+    <gallery-page-item order="2" route="/:album/:index">
       <div></div>
-    </gaia-page>
-    <gaia-page name="grid" route="/:album">
+    </gallery-page-item>
+    <gallery-page-list order="1" route="/:album">
       <div></div>
-    </gaia-page>
-    <gaia-page name="home" route="/">
+    </gallery-page-list>
+    <gallery-page-home order="0" route="/">
       <div></div>
-    </gaia-page>
+    </gallery-page-home>
   </gaia-pages>
+
+  <script>
+  rtl.onclick = () => document.dir = document.dir === 'rtl' ? 'ltr' : 'rtl';
+  </script>
 </body>
 </html>
