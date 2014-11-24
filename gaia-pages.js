@@ -25,7 +25,7 @@ module.exports = component.register('gaia-pages', {
   },
 
   getUrl: function() {
-    return location.hash.substr(1);
+    return location.hash.substr(1) || '/';
   },
 
   exec: function(url) {
