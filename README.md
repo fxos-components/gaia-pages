@@ -1,1 +1,1 @@
-[Demo](http://wilsonpage.github.io/gaia-pages);
+[Demo](http://wilsonpage.github.io/gaia-pages)
