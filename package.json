@@ -15,6 +15,7 @@
     "mozilla-download": "0.4.4"
   },
   "scripts": {
+    "install": "bower install",
     "test": "./node_modules/karma/bin/karma start test/karma.conf.js --single-run",
     "test-dev": "./node_modules/karma/bin/karma start test/karma.conf.js"
   },
