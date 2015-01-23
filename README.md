@@ -1,11 +1,6 @@
 # &lt;gaia-pages&gt; [![](https://travis-ci.org/gaia-components/gaia-pages.svg)](https://travis-ci.org/gaia-components/gaia-pages)
 
-## Installation
-
-```bash
-$ bower install gaia-components/gaia-pages
-```
-
+Declarative routing.
 
 ## Usage
 
@@ -23,4 +18,10 @@ $ bower install gaia-components/gaia-pages
 </gaia-pages>
 ```
 
-### [Demo](http://gaia-components.github.io/gaia-pages)
+## Installation
+
+```bash
+$ bower install gaia-components/gaia-pages
+```
+
+### [View demo &raquo;](http://gaia-components.github.io/gaia-pages)
