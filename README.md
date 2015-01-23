@@ -6,9 +6,8 @@
 $ bower install gaia-components/gaia-pages
 ```
 
-### [Demo](http://gaia-components.github.io/gaia-pages)
 
-### Usage
+## Usage
 
 ```html
 <nav>
@@ -23,3 +22,5 @@ $ bower install gaia-components/gaia-pages
   <section data-route="/baz"></section>
 </gaia-pages>
 ```
+
+### [Demo](http://gaia-components.github.io/gaia-pages)
