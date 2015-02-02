@@ -58,5 +58,14 @@
       </gaia-list>
     </section>
   </gaia-pages>
+
+  <script>
+  onload = function() {
+    var pages = document.querySelector('gaia-pages');
+    var update = function() { pages.navigate(location.hash.substr(1) || '/'); };
+    addEventListener('hashchange', update);
+    update();
+  };
+  </script>
 </body>
 </html>
