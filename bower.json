@@ -16,6 +16,6 @@
     "tests"
   ],
   "dependencies": {
-    "gaia-component": "gaia-components/gaia-component#~0.1.1"
+    "gaia-component": "gaia-components/gaia-component#~0.3.0"
   }
 }

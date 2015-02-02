@@ -1,5 +1,4 @@
 ;(function(define){define(function(require,exports,module){
-/*jshint esnext:true*/
 
 /**
  * Dependencies
@@ -14,23 +13,19 @@ var component = require('gaia-component');
  */
 var debug = 0 ? console.log.bind(console) : function() {};
 
+var forEach = [].forEach;
+
 /**
  * Exports
  */
 
 module.exports = component.register('gaia-pages', {
   created: function() {
-    this.addEventListener('animationend', e => onAnimationEnd(e));
-    addEventListener('hashchange', e => this.parseUrl());
-    this.setup();
-    debug('created');
-  },
-
-  setup: function() {
+    this.reset();
     this.setupRoutes();
-    this.parseUrl();
-    this.classList.add('no-animations');
-    setTimeout(() => { this.classList.remove('no-animations'); });
+    this.noTransitions = this.hasAttribute('no-transitions');
+    this.addEventListener('animationend', e => this.transitionEnded(e));
+    debug('created');
   },
 
   setupRoutes: function() {
@@ -58,86 +53,162 @@ module.exports = component.register('gaia-pages', {
     return route;
   },
 
-  parseUrl: function() {
-    this.exec(this.getUrl());
+  pushState: function(path) {
+
+    // Chop off any trailing history
+    // and start a new branch
+    this.history = this.history.slice(0, this.historyIndex + 1);
+    this.history.push(path);
+
+    // Reset the history index
+    // to the last pushed state
+    this.historyIndex = this.history.length - 1;
   },
 
-  getUrl: function() {
-    return location.hash.substr(1) || '/';
+  getState: function() {
+    return this.history[this.historyIndex];
   },
 
-  navigate: function(path) {
-    location.hash = '#' + path;
+  back: function(options) {
+    if (!this.historyIndex) { return; }
+    options = options || {};
+    options.pushState = false;
+    this.historyIndex--;
+    this.navigate(this.getState(), options);
   },
 
-  exec: function(url) {
-    debug('exec', url);
-    var matched;
-    var match;
+  forward: function() {
+    var last = this.historyIndex === this.history.length - 1;
+    if (last) { return; }
+    this.historyIndex++;
+    this.navigate(this.getState(), { pushState: false });
+  },
+
+  navigate: function(path, options) {
+    debug('navigate', path);
+    path = this.resolvePath(path);
+
+    // Exit if the patch didn't change
+    if (path === this.path) { return; }
+
+    var pushState = !options || options.pushState !== false;
+    var dir = options && options.dir;
+    var result;
     var route;
 
     for (var i = 0, l = this.routes.length; i < l; i++) {
       route = this.routes[i];
-      debug('checking route', route);
-      match = route.match(url);
-      if (!match) continue;
-      if (!route.matchMedia.matches) return this.navigate(route.fallback);
-      matched = true;
-      break;
+      result = route.match(path);
+      debug('checked route', route.pattern, result);
+
+      // If the route matches and it's not the
+      // current route, exit. Else keep on
+      // searching for new matches.
+      if (result && route.page !== this.current) {
+        break;
+      }
     }
 
-    if (matched) this.onMatched(route.page, match);
+    // Check that the current match
+    // media state is valid
+    if (!route.matchMedia.matches) {
+      this.navigate(route.fallback);
+      return;
+    }
+
+    // Update url information
+    this.params = result;
+    this.path = path;
+
+    if (result) this.showPage(route.page, dir);
+    if (pushState) { this.pushState(path); }
 
     this.deselectLinks();
-    this.url = url;
     this.selectLinks();
+
+    this.dispatchEvent(new Event('changed'));
   },
 
-  onMatched: function(el, params) {
-    debug('on matched', el, params);
-    var prev = { el: this.current };
-    var next = { el: el };
-    var unchanged = next.el === prev.el;
+  reset: function() {
+    this.history = [];
+    this.path = null;
+    this.params = null;
+  },
 
-    next.order = Number(next.el.dataset.order || this.pages.indexOf(next.el));
-    prev.order = prev.el
-      ? Number(prev.el.dataset.order || this.pages.indexOf(prev.el))
-      : -1;
+  resolvePath: function(path) {
+    if (path[0] === '/') return path;
+    return (this.getState() + '/' + path).replace(/\/\/+/g, '/');
+  },
 
-    // Determine direction
-    next.direction = next.order > prev.order ? 'forward' : 'back';
-    prev.direction = next.direction === 'forward' ? 'back' : 'forward';
+  showPage: function(next, direction) {
+    debug('on matched', next);
+    var prev = this.current;
+    var transitions = !this.noTransitions;
+    var dir = {};
+
+    // Work out animation directions
+    dir.next = direction || this.getDirection(next, prev);
+    dir.prev = dir.next === 'forward' ? 'back' : 'forward';
+
+    // Update current page reference
+    this.current = next;
+
+    // No animations on the first navigation
+    if (!this.history.length) {
+      this.animationsOff();
+      setTimeout(() => this.animationsOn());
+    }
 
     // Unmatch prev page
-    if (prev.el && !unchanged) {
-      prev.el.classList.add('leave-' + prev.direction);
-      prev.el.classList.remove('matched');
-      prev.el.setAttribute('aria-hidden', 'true');
-      prev.el.dispatchEvent(new CustomEvent('unmatched', { bubbles: false }));
+    if (prev) {
+      if (transitions) { prev.classList.add('leave-' + dir.prev); }
+      prev.classList.remove('matched');
+      prev.setAttribute('aria-hidden', 'true');
+      prev.dispatchEvent(new Event('unmatched'));
     }
 
     // Match next page
-    if (!unchanged) {
-      next.el.classList.add('enter-' + next.direction);
-      next.el.classList.add('matched');
-      next.el.removeAttribute('aria-hidden');
-      next.el.dispatchEvent(new CustomEvent('matched', {
-        detail: { params: params },
-        bubbles: false
-      }));
-    }
+    if (transitions) { next.classList.add('enter-' + dir.next); }
+    next.classList.add('matched');
+    next.removeAttribute('aria-hidden');
+    next.dispatchEvent(new Event('matched'));
+  },
 
-    this.current = next.el;
+  transitionEnded: function(e) {
+    debug('transition ended');
+    e.target.classList.remove(
+       'enter-forward',
+       'enter-back',
+       'leave-forward',
+       'leave-back');
+  },
+
+  getDirection: function(nextPage, prevPage) {
+    var nextOrder = Number(nextPage.dataset.order || this.pages.indexOf(nextPage));
+    var prevOrder = prevPage
+      ? Number(prevPage.dataset.order || this.pages.indexOf(prevPage))
+      : -1;
+
+    return nextOrder > prevOrder ? 'forward' : 'back';
+  },
+
+  animationsOn: function() {
+    this.classList.remove('no-animations');
+  },
+
+  animationsOff: function() {
+    this.classList.add('no-animations');
   },
 
   deselectLinks: function() {
-    [].forEach.call(this.links || [], el => el.classList.remove('selected'));
+    forEach.call(this.links || [], el => el.classList.remove('selected'));
     this.links = null;
   },
 
   selectLinks: function() {
-    this.links = document.querySelectorAll('a[href="#' + this.url + '"]');
-    [].forEach.call(this.links, el => el.classList.add('selected'));
+    var url = this.getState();
+    this.links = document.querySelectorAll('a[href="#' + url + '"]');
+    forEach.call(this.links, el => el.classList.add('selected'));
   },
 
   template: `
@@ -164,14 +235,14 @@ module.exports = component.register('gaia-pages', {
         height: 100%;
         overflow: auto;
 
-        animation-duration: 10000ms;
+        animation-duration: 400ms;
         animation-fill-mode: forwards;
         animation-timing-function: ease-out;
         pointer-events: none;
         opacity: 0;
       }
 
-      :host(.no-animations) ::content [data-route] {
+      :host(.no-animations) [data-route] {
         animation-duration: 0s !important;
       }
 
@@ -185,10 +256,6 @@ module.exports = component.register('gaia-pages', {
 
       ::content [data-route].matched {
         pointer-events: auto;
-      }
-
-      ::content .enter-forward {
-        animation-name: page-enter-right;
       }
 
       ::content .enter-back {
@@ -206,6 +273,18 @@ module.exports = component.register('gaia-pages', {
         animation-timing-function: ease-in;
         animation-direction: reverse;
       }
+
+      /**
+       * .enter-forward
+       */
+
+      ::content .enter-forward {
+        animation-name: page-enter-right;
+      }
+
+      /**
+       * [dir=rtl] .enter-forward
+       */
 
       :host-context([dir=rtl]) ::content .enter-forward {
         animation-name: page-enter-left !important;
@@ -249,8 +328,10 @@ module.exports = component.register('gaia-pages', {
  * @param {String} pattern
  */
 function Route(pattern) {
+  debug('create route', pattern);
   var self = this;
   this.keys = [];
+  this.pattern = pattern;
   this.specificity = (pattern.match(/(?:\/)[\:\w]+/g) || []).length;
   this.regex = new RegExp(pattern.replace(this.paramRegex, (match) => {
     self.keys.push(match.substr(1));
@@ -284,18 +365,6 @@ Route.prototype.match = function(url) {
   match.slice(1).forEach((value, i) => result[this.keys[i]] = value);
   return result;
 };
-
-/**
- * Utils
- */
-
-function onAnimationEnd(e) {
-  e.target.classList.remove(
-     'enter-forward',
-     'enter-back',
-     'leave-forward',
-     'leave-back');
-}
 
 });})(typeof define=='function'&&define.amd?define
 :(function(n,w){'use strict';return typeof module=='object'?function(c){
